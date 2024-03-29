@@ -194,6 +194,27 @@ const fetchBalance = async () => {
     "confirmed",
   );
 
+  const balance = await connection.getBalance(
+    wallet.value?.adapter.publicKey as web3.PublicKey,
+  );
+  ballance_frontend.value = balance / web3.LAMPORTS_PER_SOL;
+};
+
+onMounted(async () => {
+  connectWebSocket();
+
+  setTimeout(async () => {
+    await fetchBalance();
+  }, 10);
+
+  // nextTick(async () => {
+  //   await fetchBalance()
+  // });
+  const connection = new web3.Connection(
+    web3.clusterApiUrl("devnet"),
+    "confirmed",
+  );
+
   const provider = new anchor.AnchorProvider(
     connection,
     anchorWallet as any,
@@ -202,7 +223,7 @@ const fetchBalance = async () => {
 
   const program = new anchor.Program(idl as anchor.Idl, PROGRAM_KEY, provider);
 
-  console.log("Proooo", program);
+  console.log("Program: ", program);
 
   const [our_data] = findProgramAddressSync(
     [
@@ -231,23 +252,6 @@ const fetchBalance = async () => {
 
   const postPdaResponse = await program.account.postAccount.fetch(postPda);
   console.log("Post PDA Response", postPdaResponse);
-
-  const balance = await connection.getBalance(
-    wallet.value?.adapter.publicKey as web3.PublicKey,
-  );
-  ballance_frontend.value = balance / web3.LAMPORTS_PER_SOL;
-};
-
-onMounted(async () => {
-  connectWebSocket();
-
-  setTimeout(async () => {
-    await fetchBalance();
-  }, 10);
-
-  // nextTick(async () => {
-  //   await fetchBalance()
-  // });
 });
 
 onUnmounted(() => {
