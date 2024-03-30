@@ -4,8 +4,12 @@
     <NuxtLink id="about-link" to="/about">About</NuxtLink>
     <ClientOnly>
       <WalletMultiButton dark />
-      <button @click="crateUserAccount">Crete User Account</button>
-      <button @click="createPostAccount">Crete Post Account</button>
+      <button class="bg-green-500 hover:bg-green-300 rounded-2xl p-2 m-1 text-black" @click="crateUserAccount">
+        Crete User Account
+      </button>
+      <button class="bg-yellow-500 hover:bg-yellow-300 rounded-2xl p-2 m-1 text-black" @click="createPostAccount">
+        Crete Post Account
+      </button>
     </ClientOnly>
     <h1 class="text-3xl font-bold underline bg-red-500">Hello world!</h1>
     <button @click="sendSol">Send Sol</button>
