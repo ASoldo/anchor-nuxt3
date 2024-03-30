@@ -4,14 +4,16 @@
     <NuxtLink id="about-link" to="/about">About</NuxtLink>
     <ClientOnly>
       <WalletMultiButton dark />
+      <button @click="crateUserAccount">Crete User Account</button>
+      <button @click="createPostAccount">Crete Post Account</button>
     </ClientOnly>
     <h1 class="text-3xl font-bold underline bg-red-500">Hello world!</h1>
     <button @click="sendSol">Send Sol</button>
     <h1 v-if="connected">
       {{ ballance_frontend }} SOL
       <span class="bg-blue-500 rounded-2xl p-1.5 mx-1 text-white">{{
-      wallet?.adapter.publicKey
-    }}</span>
+        wallet?.adapter.publicKey
+      }}</span>
     </h1>
     <h1>WebSocket messages</h1>
     <ul class="h-32 overflow-hidden overflow-y-auto border-black border p-2 m-2">
@@ -122,6 +124,15 @@ watch(connected, async (newConnectedStatus, prevConnectedStatus) => {
   }
 });
 
+watch(anchorWallet, async (newConnectedStatus, prevConnectedStatus) => {
+  if (newConnectedStatus) {
+    console.log("Anchor Wallet connected");
+    await fetchBalance();
+  } else {
+    console.log("Anchor Wallet disconnected");
+  }
+});
+
 const sendSol = () => {
   const transaction = new web3.Transaction();
   const recipientPubKey = new web3.PublicKey(
@@ -155,7 +166,7 @@ const connectWebSocket = () => {
       id: 1,
       method: "programSubscribe",
       params: [
-        "2wVNAZaVLTWXxoKxmW7DT8BDnopa9Pu8F7Xm1qgxBzWf",
+        "5zhj7vyzuqzMoSf2NSASi1CkyshgqQHtTfNbKc5yPN1d",
         {
           encoding: "jsonParsed",
           commitment: "finalized",
@@ -200,6 +211,94 @@ const fetchBalance = async () => {
   ballance_frontend.value = balance / web3.LAMPORTS_PER_SOL;
 };
 
+const crateUserAccount = async () => {
+  const connection = new web3.Connection(
+    web3.clusterApiUrl("devnet"),
+    "confirmed",
+  );
+
+  const provider = new anchor.AnchorProvider(
+    connection,
+    wallet.value as any,
+    anchor.AnchorProvider.defaultOptions(),
+  );
+
+  const program = new anchor.Program(idl as anchor.Idl, PROGRAM_KEY, provider);
+
+  console.log("Program: Crate User Account", program);
+
+  const [create_user_data] = findProgramAddressSync(
+    [
+      utf8.encode("user"),
+      new web3.PublicKey(
+        wallet.value?.adapter.publicKey as web3.PublicKey,
+      ).toBuffer(),
+    ],
+    program.programId,
+  );
+  console.log("Create user data", create_user_data);
+
+  const prog = await program.methods
+    .initUser("Marac", "Avatar")
+    .accounts({
+      userAccount: create_user_data,
+      authority: anchorWallet.value?.publicKey as web3.PublicKey,
+      systemProgram: anchor.web3.SystemProgram.programId,
+    })
+    .transaction();
+
+  await sendTransaction(prog, connection);
+};
+
+const createPostAccount = async () => {
+  const connection = new web3.Connection(
+    web3.clusterApiUrl("devnet"),
+    "confirmed",
+  );
+
+  const provider = new anchor.AnchorProvider(
+    connection,
+    anchorWallet as any,
+    anchor.AnchorProvider.defaultOptions(),
+  );
+
+  const program = new anchor.Program(idl as anchor.Idl, PROGRAM_KEY, provider);
+
+  console.log("Program: Crate Post Account", program);
+  const [our_data] = findProgramAddressSync(
+    [
+      utf8.encode("user"),
+      new web3.PublicKey(
+        wallet.value?.adapter.publicKey as web3.PublicKey,
+      ).toBuffer(),
+    ],
+    program.programId,
+  );
+  const [create_post_data] = findProgramAddressSync(
+    [
+      utf8.encode("post"),
+      new web3.PublicKey(
+        wallet.value?.adapter.publicKey as web3.PublicKey,
+      ).toBuffer(),
+      Uint8Array.from([0]),
+    ],
+    program.programId,
+  );
+  console.log("Create post data", create_post_data);
+
+  const prog = await program.methods
+    .createPost("Ovo je moj post", "Ovo je moj content")
+    .accounts({
+      postAccount: create_post_data,
+      userAccount: our_data,
+      authority: wallet.value?.adapter.publicKey as web3.PublicKey,
+      systemProgram: anchor.web3.SystemProgram.programId,
+    })
+    .transaction();
+
+  await sendTransaction(prog, connection);
+};
+
 onMounted(async () => {
   connectWebSocket();
 
@@ -229,7 +328,7 @@ onMounted(async () => {
     [
       utf8.encode("user"),
       new web3.PublicKey(
-        "FUrf5ptFqKWm61TjX5zq2Nmoqq6m77q5aKH7n8ro4uax",
+        "8Sfdm2sWFHsEfVfuU1XP6smdzUTpbsDpiAQU4xHjLaJa",
       ).toBuffer(),
     ],
     program.programId,
@@ -243,7 +342,7 @@ onMounted(async () => {
     [
       utf8.encode("post"),
       new web3.PublicKey(
-        "FUrf5ptFqKWm61TjX5zq2Nmoqq6m77q5aKH7n8ro4uax",
+        "8Sfdm2sWFHsEfVfuU1XP6smdzUTpbsDpiAQU4xHjLaJa",
       ).toBuffer(),
       Uint8Array.from([1]),
     ],
@@ -255,16 +354,16 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  if (ws.value && receivedData.value) {
-    console.log("Unsubscribing and disconnecting WebSocket");
-    const unsubscribeMessage = {
-      jsonrpc: "2.0",
-      id: 1,
-      method: "programUnsubscribe",
-      params: [receivedData?.value.params.subscription],
-    };
-    ws.value.send(JSON.stringify(unsubscribeMessage));
-    ws.value.close();
-  }
+  // if (ws.value && receivedData.value) {
+  //   console.log("Unsubscribing and disconnecting WebSocket");
+  //   const unsubscribeMessage = {
+  //     jsonrpc: "2.0",
+  //     id: 1,
+  //     method: "programUnsubscribe",
+  //     params: [receivedData?.value.params.subscription],
+  //   };
+  //   ws.value.send(JSON.stringify(unsubscribeMessage));
+  //   ws.value.close();
+  // }
 });
 </script>
