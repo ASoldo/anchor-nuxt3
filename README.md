@@ -73,3 +73,25 @@ bun run preview
 ```
 
 Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+
+## Example: Create multiple instructions and add them to a single transaction | ACID
+
+```ts
+// creates first instruction
+const instructionOne = await program.methods
+  .instructionOneName(instructionOneDataInputs)
+  .accounts({})
+  .instruction();
+
+// creates second instruction
+const instructionTwo = await program.methods
+  .instructionTwoName(instructionTwoDataInputs)
+  .accounts({})
+  .instruction();
+
+// add both instruction to one transaction
+const transaction = new Transaction().add(instructionOne, instructionTwo);
+
+// send transaction
+await sendTransaction(transaction, connection);
+```
