@@ -25,6 +25,12 @@
         {{ message.params.result.value.account.data }}
       </li>
     </ul>
+    <div v-for="(post, key) in allPosts" :key="key">
+      <div class="bg-gray-200 p-2 m-2">
+        <div>{{ post.account.title }}</div>
+        <div>{{ post.account.content }}</div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -38,6 +44,8 @@ import { useAnchorWallet } from "solana-wallets-vue";
 import idl from "@/public/idl.json";
 import { findProgramAddressSync } from "@project-serum/anchor/dist/cjs/utils/pubkey";
 import { utf8 } from "@project-serum/anchor/dist/cjs/utils/bytes";
+
+const allPosts = ref<Array<AllPosts>>();
 
 const store = useCounterStore();
 
@@ -56,6 +64,12 @@ const messages =
   ref<Array<ProgramNotificationResponse>>(Array<ProgramNotificationResponse>());
 const receivedData = ref<ProgramNotificationResponse | null>(null);
 
+type AllPosts = {
+  account: {
+    title: string;
+    content: string;
+  };
+};
 type ProgramNotificationResponse = {
   jsonrpc: string;
   method: string;
@@ -303,6 +317,55 @@ const createPostAccount = async () => {
   await sendTransaction(prog, connection);
 };
 
+const getPosts = async () => {
+  const connection = new web3.Connection(
+    web3.clusterApiUrl("devnet"),
+    "confirmed",
+  );
+
+  const provider = new anchor.AnchorProvider(
+    connection,
+    anchorWallet as any,
+    anchor.AnchorProvider.defaultOptions(),
+  );
+
+  const program = new anchor.Program(idl as anchor.Idl, PROGRAM_KEY, provider);
+
+  console.log("Program: Crate Post Account", program);
+  const [our_data] = findProgramAddressSync(
+    [
+      utf8.encode("user"),
+      new web3.PublicKey(
+        wallet.value?.adapter.publicKey as web3.PublicKey,
+      ).toBuffer(),
+    ],
+    program.programId,
+  );
+  const [create_post_data] = findProgramAddressSync(
+    [
+      utf8.encode("post"),
+      new web3.PublicKey(
+        wallet.value?.adapter.publicKey as web3.PublicKey,
+      ).toBuffer(),
+      Uint8Array.from([0]),
+    ],
+    program.programId,
+  );
+  console.log("Create post data", create_post_data);
+
+  const prog = await program.methods
+    .createPost("Ovo je moj post", "Ovo je moj content")
+    .accounts({
+      postAccount: create_post_data,
+      userAccount: our_data,
+      authority: wallet.value?.adapter.publicKey as web3.PublicKey,
+      systemProgram: anchor.web3.SystemProgram.programId,
+    })
+    .transaction();
+
+  await sendTransaction(prog, connection);
+};
+
 onMounted(async () => {
   connectWebSocket();
 
@@ -355,6 +418,10 @@ onMounted(async () => {
 
   const postPdaResponse = await program.account.postAccount.fetch(postPda);
   console.log("Post PDA Response", postPdaResponse);
+
+  const all = await program.account.postAccount.all();
+  console.log("Response", all);
+  allPosts.value = all as never;
 });
 
 onUnmounted(() => {
