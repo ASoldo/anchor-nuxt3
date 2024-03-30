@@ -12,19 +12,23 @@
       </button>
     </ClientOnly>
     <h1 class="text-3xl font-bold underline bg-red-500">Hello world!</h1>
-    <button @click="sendSol">Send Sol</button>
+    <button class="bg-cyan-500 hover:bg-cyan-300 rounded-2xl p-2 m-1 text-black" @click="sendSol">
+      Send Sol
+    </button>
     <h1 v-if="connected">
       {{ ballance_frontend }} SOL
       <span class="bg-blue-500 rounded-2xl p-1.5 mx-1 text-white">{{
         wallet?.adapter.publicKey
       }}</span>
     </h1>
-    <h1>WebSocket messages</h1>
-    <ul v-if="messages.length > 0" class="h-32 overflow-hidden overflow-y-auto border-black border p-2 m-2">
-      <li v-for="(message, index) in messages" :key="index">
-        {{ message.params.result.value.account.data }}
-      </li>
-    </ul>
+    <div class="h-32 overflow-hidden overflow-y-auto border-black border p-2 m-2">
+      <h1>WebSocket messages</h1>
+      <ul v-if="messages.length > 0">
+        <li v-for="(message, index) in messages" :key="index">
+          {{ message.params.result.value.account.data }}
+        </li>
+      </ul>
+    </div>
     <div v-for="(post, key) in allPosts" :key="key">
       <div class="bg-gray-200 p-2 m-2">
         <div>{{ post.account.title }}</div>
