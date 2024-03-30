@@ -20,7 +20,7 @@
       }}</span>
     </h1>
     <h1>WebSocket messages</h1>
-    <ul class="h-32 overflow-hidden overflow-y-auto border-black border p-2 m-2">
+    <ul v-if="messages.length > 0" class="h-32 overflow-hidden overflow-y-auto border-black border p-2 m-2">
       <li v-for="(message, index) in messages" :key="index">
         {{ message.params.result.value.account.data }}
       </li>
@@ -131,7 +131,6 @@ console.log(web3.clusterApiUrl());
 console.log(web3.LAMPORTS_PER_SOL);
 console.log(web3.SystemProgram.programId);
 console.log(web3.SystemProgram.transfer.name);
-console.log(wallet.value?.adapter.publicKey);
 
 watch(connected, async (newConnectedStatus, prevConnectedStatus) => {
   if (newConnectedStatus) {
