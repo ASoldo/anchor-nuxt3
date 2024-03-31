@@ -317,7 +317,13 @@ const createPostAccount = async () => {
     })
     .transaction();
 
-  await sendTransaction(prog, connection);
+  const post = await sendTransaction(prog, connection);
+
+  console.log("Post: " + post);
+
+  const all = await program.account.postAccount.all();
+  console.log("Response", all);
+  allPosts.value = all as never;
 };
 
 const getPosts = async () => {
