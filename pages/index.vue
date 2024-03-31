@@ -12,10 +12,16 @@
       </button>
     </ClientOnly>
     <h1 class="text-3xl font-bold underline bg-red-500">Hello world!</h1>
-    <button class="bg-cyan-500 hover:bg-cyan-300 rounded-2xl p-2 m-1 text-black" @click="sendSol">
-      Send Sol
-    </button>
-    <h1 v-if="connected">
+    <div class="flex flex-row gap-1">
+      <input class="w-fit outline-black outline rounded-2xl p-2" v-model="ammountLamports" type="number"
+        placeholder="Ammount: Nubmer" />
+      <input class="w-fit outline-black outline rounded-2xl p-2" v-model="toAddress" type="text"
+        placeholder="To: Address" />
+      <button class="bg-cyan-500 hover:bg-cyan-300 rounded-2xl p-2 m-1 text-black" @click="sendSol">
+        Send SOL
+      </button>
+    </div>
+    <h1 class="pt-2" v-if="connected">
       {{ ballance_frontend }} SOL
       <span class="bg-blue-500 rounded-2xl p-1.5 mx-1 text-white">{{
         wallet?.adapter.publicKey
@@ -48,6 +54,9 @@ import { useAnchorWallet } from "solana-wallets-vue";
 import idl from "@/public/idl.json";
 import { findProgramAddressSync } from "@project-serum/anchor/dist/cjs/utils/pubkey";
 import { utf8 } from "@project-serum/anchor/dist/cjs/utils/bytes";
+
+const toAddress = ref<string>("");
+const ammountLamports = ref<number>(0);
 
 const allPosts = ref<Array<AllPosts>>();
 
@@ -155,23 +164,21 @@ watch(anchorWallet, async (newConnectedStatus, prevConnectedStatus) => {
 });
 
 const sendSol = () => {
-  const transaction = new web3.Transaction();
-  const recipientPubKey = new web3.PublicKey(
-    "CBJffHoaQAiV5HuLwEkXgb7k4Px6Ys7YS8waQzCDUFHt",
-  );
-
-  const sendSolInstruction = web3.SystemProgram.transfer({
-    fromPubkey: wallet.value?.adapter.publicKey as web3.PublicKey,
-    toPubkey: recipientPubKey,
-    lamports: web3.LAMPORTS_PER_SOL * 0.1,
-  });
-
   const connection = new web3.Connection(
     web3.clusterApiUrl("devnet"),
     "confirmed",
   );
+  const transaction = new web3.Transaction();
+  const recipientPubKey = new web3.PublicKey(toAddress.value);
+
+  const sendSolInstruction = web3.SystemProgram.transfer({
+    fromPubkey: wallet.value?.adapter.publicKey as web3.PublicKey,
+    toPubkey: recipientPubKey,
+    lamports: web3.LAMPORTS_PER_SOL * ammountLamports.value,
+  });
 
   transaction.add(sendSolInstruction);
+
   sendTransaction(transaction, connection).then((sig) => {
     console.log(sig);
   });
