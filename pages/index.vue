@@ -4,12 +4,14 @@
     <NuxtLink id="about-link" to="/about">About</NuxtLink>
     <ClientOnly>
       <WalletMultiButton dark />
-      <button class="bg-green-500 hover:bg-green-300 rounded-2xl p-2 m-1 text-black" @click="crateUserAccount">
-        Crete User Account
-      </button>
-      <button class="bg-yellow-500 hover:bg-yellow-300 rounded-2xl p-2 m-1 text-black" @click="createPostAccount">
-        Crete Post Account
-      </button>
+      <div v-if="connected">
+        <button class="bg-green-500 hover:bg-green-300 rounded-2xl p-2 m-1 text-black" @click="crateUserAccount">
+          Crete User Account
+        </button>
+        <button class="bg-yellow-500 hover:bg-yellow-300 rounded-2xl p-2 m-1 text-black" @click="createPostAccount">
+          Crete Post Account
+        </button>
+      </div>
     </ClientOnly>
     <h1 class="text-3xl font-bold underline bg-red-500">Hello world!</h1>
     <div class="flex flex-row gap-1">
@@ -41,6 +43,15 @@
         <div>{{ post.account.content }}</div>
       </div>
     </div>
+
+    <div v-for="(item, key) in itemsUnpacked" :key="key" class="w-24 h-24">
+      <img :src="item" alt="item.name" />
+      <h1>{{ item.uri }}</h1>
+    </div>
+    <h1>Items total: {{ itemsAvailable }}</h1>
+    <h1>Items redeemed: {{ itemsRedeemed }}</h1>
+    <h1>Symbol: {{ symbol }}</h1>
+    <button class="bg-blue-500 p-2" @click="mint">Mint</button>
   </div>
 </template>
 
@@ -48,12 +59,33 @@
 import { ref, watch, onMounted, onUnmounted } from "vue";
 import * as web3 from "@solana/web3.js";
 import * as anchor from "@project-serum/anchor";
+
 import { useCounterStore } from "@/stores/counter";
 import { WalletMultiButton, useWallet } from "solana-wallets-vue";
 import { useAnchorWallet } from "solana-wallets-vue";
 import idl from "@/public/idl.json";
 import { findProgramAddressSync } from "@project-serum/anchor/dist/cjs/utils/pubkey";
 import { utf8 } from "@project-serum/anchor/dist/cjs/utils/bytes";
+import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
+import { mplCandyMachine } from "@metaplex-foundation/mpl-candy-machine";
+import * as bs58 from "bs58";
+import {
+  publicKey as metaplexPublicKey,
+  transactionBuilder,
+  generateSigner,
+  some,
+} from "@metaplex-foundation/umi";
+import {
+  fetchCandyMachine,
+  fetchCandyGuard,
+  mintV2,
+  mintFromCandyMachineV2,
+} from "@metaplex-foundation/mpl-candy-machine";
+import {
+  setComputeUnitLimit,
+  createMintWithAssociatedToken,
+} from "@metaplex-foundation/mpl-toolbox";
+import { walletAdapterIdentity } from "@metaplex-foundation/umi-signer-wallet-adapters";
 
 const toAddress = ref<string>("");
 const ammountLamports = ref<number>(0);
@@ -63,6 +95,9 @@ const allPosts = ref<Array<AllPosts>>();
 const store = useCounterStore();
 
 const PROGRAM_KEY = new web3.PublicKey(idl.metadata.address);
+const CANDY_MACHINE_ID = new web3.PublicKey(
+  "HtnP5Sv4cXi9VER1W2rw6CGagdnxmGVxnoPgTwMnXqhn",
+);
 console.log("Program_key: ", PROGRAM_KEY);
 
 const { wallet, connected, signTransaction, sendTransaction, publicKey } =
@@ -76,6 +111,28 @@ const ballance_frontend = ref<Number>(0);
 const messages =
   ref<Array<ProgramNotificationResponse>>(Array<ProgramNotificationResponse>());
 const receivedData = ref<ProgramNotificationResponse | null>(null);
+
+// const candyMachinePublicKey = metaplexPublicKey(
+//   wallet.value?.adapter.publicKey as web3.PublicKey,
+// );
+// const candyMachine = await fetchCandyMachine(umi, candyMachinePublicKey);
+// const candyGuard = await fetchCandyGuard(umi, candyMachine.mintAuthority);
+
+const items = ref<Array<NftType>>([]) as any;
+const itemsUnpacked = ref();
+const itemsAvailable = ref(0);
+const symbol = ref("");
+const itemsRedeemed = ref(0);
+
+type Nft = {
+  index: number;
+  minted: boolean;
+  name: string;
+  uri: string;
+};
+type NftType = {
+  items: Array<Nft>;
+};
 
 type AllPosts = {
   account: {
@@ -438,7 +495,96 @@ onMounted(async () => {
   const all = await program.account.postAccount.all();
   console.log("Response", all);
   allPosts.value = all as never;
+
+  const umi = createUmi("https://api.devnet.solana.com/").use(
+    mplCandyMachine(),
+  );
+  console.log("Umi: ", umi);
+  const candyMachinePublicKey = metaplexPublicKey(CANDY_MACHINE_ID);
+  const candyMachine = await fetchCandyMachine(umi, candyMachinePublicKey);
+  const candyGuard = await fetchCandyGuard(umi, candyMachine.mintAuthority);
+  items.value = candyMachine.items as never;
+  itemsAvailable.value = candyMachine.data.itemsAvailable as never;
+  symbol.value = candyMachine.data.symbol;
+  itemsRedeemed.value = candyMachine.itemsRedeemed as never;
+
+  fetchNFTData();
+  console.log("Candy Machine: ", candyMachine);
+  console.log("Candy Guard: ", candyGuard);
 });
+
+const mint = async () => {
+  const umi = createUmi("https://api.devnet.solana.com/").use(
+    mplCandyMachine(),
+  );
+  umi.use(walletAdapterIdentity(wallet.value?.adapter as any));
+  console.log("Umi: ", umi);
+  const candyMachinePublicKey = metaplexPublicKey(CANDY_MACHINE_ID);
+  const candyMachine = await fetchCandyMachine(umi, candyMachinePublicKey);
+  const candyGuard = await fetchCandyGuard(umi, candyMachine.mintAuthority);
+
+  const nftMint = generateSigner(umi);
+  const transaction = transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 800_000 }))
+    .add(
+      mintV2(umi, {
+        candyMachine: candyMachine.publicKey,
+        candyGuard: candyGuard.publicKey,
+        nftMint,
+        collectionMint: candyMachine.collectionMint,
+        collectionUpdateAuthority: candyMachine.authority,
+        tokenStandard: candyMachine.tokenStandard,
+        mintArgs: {
+          solPayment: some({
+            destination: metaplexPublicKey(
+              wallet.value?.adapter.publicKey as web3.PublicKey,
+            ),
+          }),
+        },
+      }),
+    );
+  const { signature } = await transaction.sendAndConfirm(umi, {
+    confirm: {
+      commitment: "confirmed",
+    },
+  });
+  const txid = bs58.encode(signature);
+  console.log("success", `Mint successful! ${txid}`);
+
+  // const nftMint = generateSigner(umi);
+  // const nftOwner = generateSigner(umi).publicKey;
+  //
+  // console.log(nftMint);
+  // await transactionBuilder()
+  //   .add(setComputeUnitLimit(umi, { units: 800_000 }))
+  //   .add(
+  //     mintFromCandyMachineV2(umi, {
+  //       candyMachine: candyMachine.publicKey,
+  //       nftMint: nftMint,
+  //       collectionMint: candyGuard.publicKey,
+  //       collectionUpdateAuthority: candyMachine.publicKey,
+  //       nftOwner: nftOwner,
+  //       mintAuthority: umi.identity,
+  //     }),
+  //   )
+  //   .sendAndConfirm(umi);
+  // console.log("Candy Machine: ", candyMachine);
+  // console.log("Candy Guard: ", candyGuard);
+};
+
+const fetchNFTData = async () => {
+  const urls = await Promise.all(
+    items.value.map(async (item: any) => {
+      const response = await fetch(item.uri);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      return data.image; // Assuming each JSON structure contains an 'image' field at the root
+    }),
+  );
+  itemsUnpacked.value = urls;
+};
 
 onUnmounted(() => {
   // if (ws.value && receivedData.value) {
