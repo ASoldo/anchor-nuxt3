@@ -52,6 +52,7 @@
     <h1>Items redeemed: {{ itemsRedeemed }}</h1>
     <h1>Symbol: {{ symbol }}</h1>
     <button class="bg-blue-500 p-2" @click="mint">Mint</button>
+    <button class="bg-red-500 p-2" @click="getNftsFromWallet">Get NFT's</button>
   </div>
 </template>
 
@@ -68,6 +69,7 @@ import { findProgramAddressSync } from "@project-serum/anchor/dist/cjs/utils/pub
 import { utf8 } from "@project-serum/anchor/dist/cjs/utils/bytes";
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import { mplCandyMachine } from "@metaplex-foundation/mpl-candy-machine";
+import { fetchAllDigitalAssetByOwner } from "@metaplex-foundation/mpl-token-metadata";
 import * as bs58 from "bs58";
 import {
   publicKey as metaplexPublicKey,
@@ -584,6 +586,23 @@ const fetchNFTData = async () => {
     }),
   );
   itemsUnpacked.value = urls;
+};
+
+const getNftsFromWallet = async () => {
+  const connection = new web3.Connection(
+    web3.clusterApiUrl("devnet"),
+    "confirmed",
+  );
+
+  const umi = createUmi("https://api.devnet.solana.com/").use(
+    mplCandyMachine(),
+  );
+
+  const assets = await fetchAllDigitalAssetByOwner(
+    umi,
+    wallet.value?.adapter.publicKey as any,
+  );
+  console.log(assets);
 };
 
 onUnmounted(() => {
