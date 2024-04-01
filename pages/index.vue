@@ -53,6 +53,12 @@
     <h1>Symbol: {{ symbol }}</h1>
     <button class="bg-blue-500 p-2" @click="mint">Mint</button>
     <button class="bg-red-500 p-2" @click="getNftsFromWallet">Get NFT's</button>
+    <button class="bg-green-500 p-2" @click="getAllTokens">
+      Get all Tokens
+    </button>
+    <button class="bg-pink-500 p-2" @click="updateMetadata">
+      Update Metadata
+    </button>
   </div>
 </template>
 
@@ -69,7 +75,24 @@ import { findProgramAddressSync } from "@project-serum/anchor/dist/cjs/utils/pub
 import { utf8 } from "@project-serum/anchor/dist/cjs/utils/bytes";
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import { mplCandyMachine } from "@metaplex-foundation/mpl-candy-machine";
-import { fetchAllDigitalAssetByOwner } from "@metaplex-foundation/mpl-token-metadata";
+import {
+  fromWeb3JsKeypair,
+  fromWeb3JsPublicKey,
+} from "@metaplex-foundation/umi-web3js-adapters";
+import {
+  createMetadataAccountV3,
+  fetchAllDigitalAssetByOwner,
+  type CreateMetadataAccountV3InstructionAccounts,
+  type CreateMetadataAccountV3InstructionArgs,
+} from "@metaplex-foundation/mpl-token-metadata";
+import {
+  createMint,
+  getOrCreateAssociatedTokenAccount,
+  mintTo,
+  transfer,
+  AccountLayout,
+  TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
 import * as bs58 from "bs58";
 import {
   publicKey as metaplexPublicKey,
@@ -603,6 +626,67 @@ const getNftsFromWallet = async () => {
     wallet.value?.adapter.publicKey as any,
   );
   console.log(assets);
+};
+
+const getAllTokens = async () => {
+  const connection = new web3.Connection(
+    web3.clusterApiUrl("devnet"),
+    "confirmed",
+  );
+
+  const tokenAccounts = await connection.getTokenAccountsByOwner(
+    new web3.PublicKey(wallet.value?.adapter.publicKey as web3.PublicKey),
+    {
+      programId: TOKEN_PROGRAM_ID,
+    },
+  );
+
+  console.log("Token                                         Balance");
+  console.log("------------------------------------------------------------");
+  console.log(tokenAccounts.value);
+  tokenAccounts.value.forEach((tokenAccount) => {
+    const accountData = AccountLayout.decode(tokenAccount.account.data);
+    console.log(
+      `${new web3.PublicKey(accountData.mint)}   ${accountData.amount}`,
+    );
+  });
+};
+
+const updateMetadata = async () => {
+  const umi = createUmi("https://api.devnet.solana.com/").use(
+    mplCandyMachine(),
+  );
+  umi.use(walletAdapterIdentity(wallet.value?.adapter as any));
+  const signer = generateSigner(umi);
+  const mint = new web3.PublicKey(
+    "HSWkjsJ5N973g8TYC7FXDZkksJgpKE7YEudgB5hqonuW",
+  );
+  // const candyMachinePublicKey = metaplexPublicKey(CANDY_MACHINE_ID);
+  //  const candyMachine = await fetchCandyMachine(umi, candyMachinePublicKey);
+  //  const candyGuard = await fetchCandyGuard(umi, candyMachine.mintAuthority);
+  const accounts: CreateMetadataAccountV3InstructionAccounts = {
+    mint: fromWeb3JsPublicKey(mint),
+    mintAuthority: signer,
+  };
+  const data: CreateMetadataAccountV3InstructionArgs = {
+    isMutable: true,
+    collectionDetails: null,
+    data: {
+      name: "Rootster",
+      symbol: "ROOT",
+      uri: "https://bafkreic3gsvl5rdzvj5dwyiowkpy6cagfo3tgkiknkgct7juzzyuvzdhum.ipfs.nftstorage.link/",
+      sellerFeeBasisPoints: 500,
+      collection: null,
+      uses: null,
+      creators: null,
+    },
+  };
+
+  const txid = createMetadataAccountV3(umi, {
+    ...accounts,
+    ...data,
+  }).sendAndConfirm(umi);
+  console.log("TXID: ", txid);
 };
 
 onUnmounted(() => {
