@@ -1,6 +1,15 @@
 {
-  "name": "Aetrix",
-  "symbol": "AETX",
-  "image": "https://bafkreifmi2czpd775u7ssmo3clio77rrqpx4cnphq2w7glikjqars4hk5a.ipfs.nftstorage.link/",
-  "descriptoin": "AETX Aetrix Token"
+  "name": "Rootsta",
+  "symbol": "RSTA",
+  "description": "Rootsta is token",
+  "image": "https://raw.githubusercontent.com/ASoldo/anchor-nuxt3/main/public/Coin.png",
+  "attributes": [],
+  "properties": {
+    "files": [
+      {
+        "uri": "https://raw.githubusercontent.com/ASoldo/anchor-nuxt3/main/public/Coin.png",
+        "type": "image/png"
+      }
+    ]
+  }
 }
