@@ -544,6 +544,7 @@ const mint = async () => {
   );
   umi.use(walletAdapterIdentity(wallet.value?.adapter as any));
   console.log("Umi: ", umi);
+
   const candyMachinePublicKey = metaplexPublicKey(CANDY_MACHINE_ID);
   const candyMachine = await fetchCandyMachine(umi, candyMachinePublicKey);
   const candyGuard = await fetchCandyGuard(umi, candyMachine.mintAuthority);
