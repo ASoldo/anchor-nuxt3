@@ -2,12 +2,12 @@
   "name": "ROOTSTER",
   "symbol": "RR",
   "description": "ROOTSTER is token",
-  "image": "https://raw.githubusercontent.com/ASoldo/anchor-nuxt3/main/public/Coin.png",
+  "image": "https://bafybeihhvwavvdrj7uf5sfan22zv66bxk6xw5adbp4pydf6cpxwdchbk54.ipfs.nftstorage.link/",
   "attributes": [],
   "properties": {
     "files": [
       {
-        "uri": "https://raw.githubusercontent.com/ASoldo/anchor-nuxt3/main/public/Coin.png",
+        "uri": "https://bafybeihhvwavvdrj7uf5sfan22zv66bxk6xw5adbp4pydf6cpxwdchbk54.ipfs.nftstorage.link/",
         "type": "image/png"
       }
     ]
